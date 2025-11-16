@@ -5,7 +5,8 @@ const gameState = {
     provider: 'google', // 'google', 'anthropic', or 'openai'
     currentFriend: null,
     usedFriends: [],
-    spiceLevel: 'mild' // 'mild', 'medium', 'spicy', 'intimate'
+    spicePreference: 'mild', // User's selection (can be 'random')
+    spiceLevel: 'mild' // Actual resolved spice level ('mild', 'medium', 'spicy', 'intimate')
 };
 
 // DOM Elements
@@ -59,14 +60,20 @@ document.querySelectorAll('input[name="ai-provider"]').forEach(radio => {
 spiceLevelBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         const newLevel = btn.dataset.level;
-        gameState.spiceLevel = newLevel;
+        gameState.spicePreference = newLevel;
+        // If random is selected, default to mild until first resolution
+        if (newLevel === 'random') {
+            gameState.spiceLevel = 'mild';
+        } else {
+            gameState.spiceLevel = newLevel;
+        }
         updateSpiceLevelUI();
     });
 });
 
 function updateSpiceLevelUI() {
     spiceLevelBtns.forEach(btn => {
-        if (btn.dataset.level === gameState.spiceLevel) {
+        if (btn.dataset.level === gameState.spicePreference) {
             btn.classList.add('active');
         } else {
             btn.classList.remove('active');
@@ -74,6 +81,7 @@ function updateSpiceLevelUI() {
     });
 
     const levelNames = {
+        'random': 'Random',
         'mild': 'Mild',
         'medium': 'Medium',
         'spicy': 'Spicy',
@@ -81,7 +89,38 @@ function updateSpiceLevelUI() {
     };
 
     if (currentSpiceLevelDisplay) {
-        currentSpiceLevelDisplay.textContent = levelNames[gameState.spiceLevel];
+        currentSpiceLevelDisplay.textContent = levelNames[gameState.spicePreference];
+    }
+}
+
+function resolveSpiceLevel() {
+    // If random mode, pick a random spice level for this round
+    if (gameState.spicePreference === 'random') {
+        // Weighted random: 25% mild, 30% medium, 30% spicy, 15% intimate
+        const rand = Math.random();
+        if (rand < 0.25) gameState.spiceLevel = 'mild';
+        else if (rand < 0.55) gameState.spiceLevel = 'medium';
+        else if (rand < 0.85) gameState.spiceLevel = 'spicy';
+        else gameState.spiceLevel = 'intimate';
+    } else {
+        gameState.spiceLevel = gameState.spicePreference;
+    }
+}
+
+function updateCurrentPlayerDisplay() {
+    // Show current player with spice info if in random mode
+    if (gameState.spicePreference === 'random') {
+        const spiceEmojis = {
+            'mild': '🌶️',
+            'medium': '🌶️🌶️',
+            'spicy': '🌶️🌶️🌶️',
+            'intimate': '🌶️🌶️🌶️🌶️'
+        };
+        const emoji = spiceEmojis[gameState.spiceLevel] || '🎲';
+        const spiceName = gameState.spiceLevel.charAt(0).toUpperCase() + gameState.spiceLevel.slice(1);
+        currentPlayerDiv.innerHTML = `${gameState.currentFriend.name}'s Turn <span class="spice-badge">${emoji} ${spiceName}</span>`;
+    } else {
+        currentPlayerDiv.textContent = `${gameState.currentFriend.name}'s Turn`;
     }
 }
 
@@ -187,7 +226,14 @@ function selectRandomFriend() {
             // Move to topic selection after delay
             setTimeout(() => {
                 switchScreen(selectionScreen, topicScreen);
-                currentPlayerDiv.textContent = `${selectedFriend.name}'s Turn`;
+
+                // Resolve spice level for this round if random mode
+                if (gameState.spicePreference === 'random') {
+                    resolveSpiceLevel();
+                }
+
+                // Update player display with spice info if random
+                updateCurrentPlayerDisplay();
                 generateTopics();
             }, 2000);
         }

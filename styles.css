@@ -571,6 +571,30 @@ body {
     flex: 1;
 }
 
+/* Spice Badge (shown when random mode is active) */
+.spice-badge {
+    display: inline-block;
+    margin-left: 15px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    color: white;
+    border-radius: 20px;
+    font-size: 0.6em;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
+    animation: badgePulse 2s ease-in-out infinite;
+    vertical-align: middle;
+}
+
+@keyframes badgePulse {
+    0%, 100% {
+        box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 25px rgba(240, 147, 251, 0.7);
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .title-main {
