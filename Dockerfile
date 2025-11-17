@@ -10,6 +10,7 @@ COPY app.js .
 COPY app-loader.js .
 COPY styles.css .
 COPY templates/ ./templates/
+COPY static/ ./static/
 
 EXPOSE 8080
 
