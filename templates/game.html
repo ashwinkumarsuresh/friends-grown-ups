@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Friends Game - Grown-Ups Edition</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        @media (max-width: 768px) {
+            body { overflow-x: hidden; }
+            .game-container { padding: 10px; min-height: 100vh; }
+            .setup-panel, .spotlight-container, .topic-container, .question-container { padding: 20px; }
+            .title-main { font-size: 2.2em !important; }
+            .subtitle, .age-warning { font-size: 1em !important; }
+            .screen-title { font-size: 1.8em !important; }
+            .friend-input-group { flex-direction: column; }
+            .btn { padding: 12px 20px; font-size: 1em; }
+            input.input-field { font-size: 16px !important; }
+            .spice-buttons { flex-wrap: wrap; }
+            .spice-btn { flex: 1 1 45%; min-width: 120px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div id="setup-screen" class="screen active">
+            <div class="game-logo">
+                <h1 class="title-main">🔥 FRIENDS GAME 🔥</h1>
+                <p class="subtitle">Deep conversations for adults</p>
+                <p class="age-warning">18+ ONLY</p>
+            </div>
+            <div class="setup-panel">
+                <h2>Add Your Friends</h2>
+                <div class="friend-input-group">
+                    <input type="text" id="friend-name" placeholder="Friend's Name" class="input-field">
+                    <button id="add-friend-btn" class="btn btn-primary">Add Friend</button>
+                </div>
+                <div id="friends-list" class="friends-list"></div>
+                <div class="api-setup">
+                    <h3>AI Model Selection</h3>
+                    <div class="model-selection">
+                        <label class="model-option">
+                            <input type="radio" name="ai-provider" value="google" checked>
+                            <span class="model-name">Google Gemini</span>
+                        </label>
+                        <label class="model-option">
+                            <input type="radio" name="ai-provider" value="anthropic">
+                            <span class="model-name">Anthropic Claude</span>
+                        </label>
+                        <label class="model-option">
+                            <input type="radio" name="ai-provider" value="openai">
+                            <span class="model-name">OpenAI GPT</span>
+                        </label>
+                    </div>
+                    <input type="password" id="api-key" placeholder="API Key" class="input-field" style="display: none;">
+                </div>
+                <button id="start-game-btn" class="btn btn-success" disabled>Start Game!</button>
+                <a href="/logout" style="display: block; text-align: center; margin-top: 15px; color: #666;">Logout</a>
+            </div>
+        </div>
+        <div id="selection-screen" class="screen">
+            <div class="spotlight-container">
+                <h2 class="screen-title">WHO'S NEXT?</h2>
+                <div id="name-spinner" class="name-spinner"></div>
+                <div id="selected-friend" class="selected-friend"></div>
+            </div>
+        </div>
+        <div id="topic-screen" class="screen">
+            <div class="topic-container">
+                <h2 class="screen-title">Choose Your Topic!</h2>
+                <div id="current-player" class="current-player"></div>
+                <div class="spice-control">
+                    <div class="spice-label">Spice Level: <span id="current-spice-level">Mild</span></div>
+                    <div class="spice-buttons">
+                        <button class="spice-btn" data-level="random" title="Randomly selected each round">🎲 Random</button>
+                        <button class="spice-btn active" data-level="mild" title="Light and playful">🌶️ Mild</button>
+                        <button class="spice-btn" data-level="medium" title="More personal">🌶️🌶️ Medium</button>
+                        <button class="spice-btn" data-level="spicy" title="Bold and revealing">🌶️🌶️🌶️ Spicy</button>
+                        <button class="spice-btn" data-level="intimate" title="Very personal">🌶️🌶️🌶️🌶️ Intimate</button>
+                    </div>
+                </div>
+                <div id="topics-loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Generating intriguing topics...</p>
+                </div>
+                <div id="topics-grid" class="topics-grid"></div>
+            </div>
+        </div>
+        <div id="question-screen" class="screen">
+            <div class="question-container">
+                <h2 class="screen-title">Here's Your Question!</h2>
+                <div id="question-player" class="current-player"></div>
+                <div id="question-loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Crafting the perfect question...</p>
+                </div>
+                <div id="question-display" class="question-display"></div>
+                <div class="action-buttons">
+                    <button id="next-round-btn" class="btn btn-success">Next Round</button>
+                    <button id="end-game-btn" class="btn btn-danger">End Game</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const PRELOADED_API_KEYS = {
+            google: "{{ google_api_key }}",
+            anthropic: "{{ anthropic_api_key }}",
+            openai: "{{ openai_api_key }}"
+        };
+    </script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="{{ url_for('static', filename='app-loader.js') }}"></script>
+</body>
+</html>
