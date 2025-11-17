@@ -11,8 +11,8 @@ import os
 from functools import wraps
 
 app = Flask(__name__,
-            static_folder='.',
-            static_url_path='')
+            static_folder='static',
+            static_url_path='/static')
 app.secret_key = os.environ.get('SESSION_SECRET', 'dev-secret-change-in-production')
 
 # Get password from environment variable

@@ -6,9 +6,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY server.py .
-COPY app.js .
-COPY app-loader.js .
-COPY styles.css .
 COPY templates/ ./templates/
 COPY static/ ./static/
 
