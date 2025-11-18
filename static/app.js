@@ -9,6 +9,123 @@ const gameState = {
     spiceLevel: 'mild' // Actual resolved spice level ('mild', 'medium', 'spicy', 'intimate')
 };
 
+// Question Pool Management
+const POOL_SIZE = 10;
+
+function getPoolKey(topicTitle, spiceLevel) {
+    // Sanitize topic title for use as key and include spice level
+    const sanitized = topicTitle.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    return `friends_grownups_pool_${sanitized}_${spiceLevel}`;
+}
+
+function getUsedQuestionsKey() {
+    return 'friends_grownups_used_questions_session';
+}
+
+function getQuestionPool(topicTitle, spiceLevel) {
+    const key = getPoolKey(topicTitle, spiceLevel);
+    const pool = localStorage.getItem(key);
+    return pool ? JSON.parse(pool) : [];
+}
+
+function saveQuestionPool(topicTitle, spiceLevel, questions) {
+    const key = getPoolKey(topicTitle, spiceLevel);
+    localStorage.setItem(key, JSON.stringify(questions));
+}
+
+function getUsedQuestions() {
+    const used = sessionStorage.getItem(getUsedQuestionsKey());
+    return used ? JSON.parse(used) : [];
+}
+
+function addUsedQuestion(question) {
+    const used = getUsedQuestions();
+    used.push(question);
+    sessionStorage.setItem(getUsedQuestionsKey(), JSON.stringify(used));
+}
+
+function popQuestionFromPool(topicTitle, spiceLevel) {
+    const pool = getQuestionPool(topicTitle, spiceLevel);
+    if (pool.length === 0) return null;
+
+    const question = pool.shift(); // Take first question
+    saveQuestionPool(topicTitle, spiceLevel, pool);
+    return question;
+}
+
+async function generateQuestionPool(topic, spiceLevel) {
+    const spiceGuidance = getSpiceLevelGuidance(spiceLevel);
+    const usedQuestions = getUsedQuestions();
+
+    let usedQuestionsText = '';
+    if (usedQuestions.length > 0) {
+        usedQuestionsText = `\n\nPREVIOUSLY USED QUESTIONS (DO NOT REPEAT THESE):\n${usedQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`;
+    }
+
+    const prompt = `Generate EXACTLY ${POOL_SIZE} questions for an ADULT-ONLY friends game (18+).
+
+Topic: "${topic.title}" - ${topic.description}
+Player: ${gameState.currentFriend.name}
+Spice Level: ${spiceLevel.toUpperCase()} - ${spiceGuidance.description}
+
+ALL CONTENT MUST BE FOR ADULTS ONLY (18+). This is NOT family-friendly.
+
+SPICE LEVEL GUIDELINES:
+${spiceGuidance.tone}
+
+Rules:
+- Use CONVERSATIONAL, NATURAL language
+- Make them SHORT and CLEAR
+- Make them ENGAGING and thought-provoking
+- Ask about SPECIFIC situations or experiences
+- Adjust ALL content intensity to match the ${spiceLevel} spice level
+- Should create interesting adult conversation
+- Be bold and direct - this is for adults
+- Each question must be DIFFERENT from each other${usedQuestionsText}
+
+Examples of ${spiceLevel} level questions:
+${spiceGuidance.examples}
+
+Return ONLY a JSON array of ${POOL_SIZE} questions. Format: ["question 1?", "question 2?", ...]
+No markdown, no extra text, just the JSON array.`;
+
+    try {
+        const result = await callAIAPI(prompt, true);
+
+        // Parse the JSON array
+        let questions;
+        try {
+            // Clean up the response - remove markdown if present
+            const cleanedResult = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            questions = JSON.parse(cleanedResult);
+
+            if (!Array.isArray(questions)) {
+                throw new Error('Response is not an array');
+            }
+
+            // Ensure we have exactly POOL_SIZE questions
+            if (questions.length < POOL_SIZE) {
+                console.warn(`Generated only ${questions.length} questions instead of ${POOL_SIZE}`);
+            }
+
+            // Take only the first POOL_SIZE questions
+            questions = questions.slice(0, POOL_SIZE);
+
+        } catch (parseError) {
+            console.error('Failed to parse questions array:', result);
+            throw new Error('Invalid response format from AI');
+        }
+
+        // Save to localStorage
+        saveQuestionPool(topic.title, spiceLevel, questions);
+
+        return questions;
+    } catch (error) {
+        console.error('Error generating question pool:', error);
+        throw error;
+    }
+}
+
 // DOM Elements
 const setupScreen = document.getElementById('setup-screen');
 const selectionScreen = document.getElementById('selection-screen');
@@ -240,7 +357,9 @@ function selectRandomFriend() {
     }, 100);
 }
 
-function getSpiceLevelGuidance() {
+function getSpiceLevelGuidance(spiceLevel = null) {
+    const level = spiceLevel || gameState.spiceLevel;
+
     const guidance = {
         'mild': {
             description: 'Light and playful - fun questions that keep things interesting but still comfortable',
@@ -264,7 +383,7 @@ function getSpiceLevelGuidance() {
         }
     };
 
-    return guidance[gameState.spiceLevel];
+    return guidance[level];
 }
 
 async function generateTopics() {
@@ -348,34 +467,22 @@ async function selectTopic(topic) {
     questionDisplay.innerHTML = '';
 
     try {
-        const spiceGuidance = getSpiceLevelGuidance();
+        // Try to get a question from the pool
+        let question = popQuestionFromPool(topic.title, gameState.spiceLevel);
 
-        const prompt = `Generate ONE question for an ADULT-ONLY friends game (18+).
+        // If pool is empty, generate a new pool
+        if (!question) {
+            questionLoading.innerHTML = '<p>Generating fresh questions...</p>';
+            await generateQuestionPool(topic, gameState.spiceLevel);
+            question = popQuestionFromPool(topic.title, gameState.spiceLevel);
+        }
 
-Topic: "${topic.title}" - ${topic.description}
-Player: ${gameState.currentFriend.name}
-Spice Level: ${gameState.spiceLevel.toUpperCase()} - ${spiceGuidance.description}
+        if (!question) {
+            throw new Error('Failed to generate questions');
+        }
 
-ALL CONTENT MUST BE FOR ADULTS ONLY (18+). This is NOT family-friendly.
-
-SPICE LEVEL GUIDELINES:
-${spiceGuidance.tone}
-
-Rules:
-- Use CONVERSATIONAL, NATURAL language
-- Make it SHORT and CLEAR
-- Make it ENGAGING and thought-provoking
-- Ask about a SPECIFIC situation or experience
-- Adjust content intensity to match the ${gameState.spiceLevel} spice level
-- Should create interesting adult conversation
-- Be bold and direct - this is for adults
-
-Examples of ${gameState.spiceLevel} level questions:
-${spiceGuidance.examples}
-
-Return ONLY the question. No quotes, no extra words.`;
-
-        const question = await callAIAPI(prompt, true);
+        // Add to used questions
+        addUsedQuestion(question);
 
         questionLoading.style.display = 'none';
 
